@@ -1,0 +1,35 @@
+#---------------------------------#
+#      general configuration      #
+#---------------------------------#
+
+branches:
+  only:
+    - master
+    - develop
+
+#---------------------------------#
+#    environment configuration    #
+#---------------------------------#
+
+nuget:
+  account_feed: true
+  project_feed: true
+
+#---------------------------------#
+#       build configuration       #
+#---------------------------------#
+
+platform: Any CPU
+
+configuration: Release
+
+build:
+  project: Imp.SkiaSharpWpfExtensions.sln
+
+
+#---------------------------------#
+#           build events          #
+#---------------------------------#
+
+before_build:
+  - nuget restore

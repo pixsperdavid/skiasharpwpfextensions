@@ -81,7 +81,9 @@ namespace SkiaSharp.WpfExtensions
 				var surface = SKSurface.Create(_bitmap.Width, _bitmap.Height, SKColorType.N_32, SKAlphaType.Premul, data.Scan0,
 					_bitmap.Width * 4))
 			{
-				surface.Canvas.Clear(_canvasClearColor);
+				if (IsClearCanvas)
+					surface.Canvas.Clear(_canvasClearColor);
+
 				Draw(surface.Canvas);
 			}
 
