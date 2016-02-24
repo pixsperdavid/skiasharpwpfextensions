@@ -1,12 +1,9 @@
 ﻿using System;
 using System.ComponentModel;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using JetBrains.Annotations;
-using PixelFormat = System.Drawing.Imaging.PixelFormat;
 
 namespace SkiaSharp.WpfExtensions
 {
@@ -16,8 +13,7 @@ namespace SkiaSharp.WpfExtensions
 	[PublicAPI]
 	public abstract class SkiaControl : FrameworkElement
 	{
-		private object _bitmapLock = new object();
-		private Bitmap _bitmap;
+		private WriteableBitmap _bitmap;
 		private SKColor _canvasClearColor;
 
 		static SkiaControl()
@@ -29,7 +25,6 @@ namespace SkiaSharp.WpfExtensions
 		{
 			recreateBitmap();
 			SizeChanged += (o, args) => recreateBitmap();
-			Dispatcher.ShutdownStarted += (o, args) => disposeBitmap();
 		}
 
 		
@@ -76,116 +71,30 @@ namespace SkiaSharp.WpfExtensions
 		/// <summary>
 		/// Capture the most recent control render to an image
 		/// </summary>
-		/// <param name="pixelformat"><see cref="Bitmap"/> pixel format</param>
-		/// <param name="rect">Capture area</param>
-		/// <returns>A <see cref="Bitmap"/> containing the captured area</returns>
-		[CanBeNull]
-		public Bitmap SnapshotToBitmap(System.Drawing.Imaging.PixelFormat pixelformat, Rectangle? rect = null)
-		{
-			lock (_bitmapLock)
-			{
-				if (_bitmap == null)
-					return null;
-
-				var bitmapRect = new Rectangle(0, 0, _bitmap.Width, _bitmap.Height);
-
-				if (rect.HasValue)
-				{
-					if (!bitmapRect.Contains(rect.Value))
-						throw new ArgumentOutOfRangeException(nameof(rect), "Rect area is not entirely contained within bitmap area");
-				}
-
-				return _bitmap.Clone(rect ?? bitmapRect, pixelformat);
-			}
-		}
-
-		/// <summary>
-		/// Capture the most recent control render to an image
-		/// </summary>
-		/// <param name="pixelformat">Bitmap pixel format</param>
-		/// <param name="rect">Capture area</param>
-		/// <returns>A bitmap containing the captured area</returns>
-		[CanBeNull]
-		public Bitmap SnapshotToBitmap(PixelFormat pixelformat, Rect rect)
-		{
-			return SnapshotToBitmap(pixelformat, new Rectangle((int)rect.X, (int)rect.Y, (int)rect.Width, (int)rect.Height));
-		}
-
-		/// <summary>
-		/// Capture the most recent control render to an image
-		/// </summary>
-		/// <param name="pixelformat">Bitmap pixel format</param>
-		/// <param name="rect">Capture area</param>
 		/// <returns>An <see cref="ImageSource"/> containing the captured area</returns>
 		[CanBeNull]
-		public ImageSource SnapshotToImageSource(System.Drawing.Imaging.PixelFormat pixelformat, Rectangle? rect = null)
-		{
-			lock (_bitmapLock)
-			{
-				if (_bitmap == null)
-					return null;
-
-				var bitmapRect = new Rectangle(0, 0, _bitmap.Width, _bitmap.Height);
-
-				if (rect.HasValue)
-				{
-					if (!bitmapRect.Contains(rect.Value))
-						throw new ArgumentOutOfRangeException(nameof(rect), "Rect area is not entirely contained within bitmap area");
-				}
-
-				var clonedBitmap = _bitmap.Clone(rect ?? bitmapRect, pixelformat);
-
-				var data = _bitmap.LockBits(new Rectangle(0, 0, clonedBitmap.Width, clonedBitmap.Height), ImageLockMode.ReadOnly,
-					clonedBitmap.PixelFormat);
-
-				var bitmapSource = BitmapSource.Create(data.Width, data.Height, 96, 96, PixelFormats.Pbgra32, null,
-					data.Scan0, data.Stride * data.Height, data.Stride);
-
-				_bitmap.UnlockBits(data);
-
-				return bitmapSource;
-			}
-		}
-
-		/// <summary>
-		/// Capture the most recent control render to an image
-		/// </summary>
-		/// <param name="pixelformat">Bitmap pixel format</param>
-		/// <param name="rect">Capture area</param>
-		/// <returns>An <see cref="ImageSource"/> containing the captured area</returns>
-		[CanBeNull]
-		public ImageSource SnapshotToImageSource(PixelFormat pixelformat, Rect rect)
-		{
-			return SnapshotToImageSource(pixelformat, new Rectangle((int)rect.X, (int)rect.Y, (int)rect.Width, (int)rect.Height));
-		}
+		public BitmapSource SnapshotToBitmapSource() => _bitmap?.Clone();
 
 		protected override void OnRender(DrawingContext dc)
 		{
-			lock (_bitmapLock)
+			if (_bitmap == null)
+				return;
+
+			_bitmap.Lock();
+
+			using (var surface = SKSurface.Create((int)_bitmap.Width, (int)_bitmap.Height, 
+				SKColorType.N_32, SKAlphaType.Premul, _bitmap.BackBuffer, _bitmap.BackBufferStride))
 			{
-				if (_bitmap == null)
-					return;
+				if (IsClearCanvas)
+					surface.Canvas.Clear(_canvasClearColor);
 
-				var data = _bitmap.LockBits(new Rectangle(0, 0, _bitmap.Width, _bitmap.Height), ImageLockMode.ReadWrite,
-					_bitmap.PixelFormat);
-
-				using (
-					var surface = SKSurface.Create(_bitmap.Width, _bitmap.Height, SKColorType.N_32, SKAlphaType.Premul, data.Scan0,
-						_bitmap.Width * 4))
-				{
-					if (IsClearCanvas)
-						surface.Canvas.Clear(_canvasClearColor);
-
-					Draw(surface.Canvas);
-				}
-
-				var bitmapSource = BitmapSource.Create(data.Width, data.Height, 96, 96, PixelFormats.Pbgra32, null,
-					data.Scan0, data.Stride * data.Height, data.Stride);
-
-				_bitmap.UnlockBits(data);
-
-				dc.DrawImage(bitmapSource, new Rect(0, 0, ActualWidth, ActualHeight));
+				Draw(surface.Canvas);
 			}
+
+			_bitmap.AddDirtyRect(new Int32Rect(0, 0, (int)_bitmap.Width, (int)_bitmap.Height));
+			_bitmap.Unlock();
+
+			dc.DrawImage(_bitmap, new Rect(0, 0, ActualWidth, ActualHeight));
 		}
 
 		protected override void OnVisualParentChanged(DependencyObject oldParent)
@@ -201,26 +110,13 @@ namespace SkiaSharp.WpfExtensions
 
 		private void recreateBitmap()
 		{
-			lock (_bitmapLock)
-			{
-				_bitmap?.Dispose();
+			int width = (int)ActualWidth;
+			int height = (int)ActualHeight;
 
-				int width = (int)ActualWidth;
-				int height = (int)ActualHeight;
-
-				if (height > 0 && width > 0 && Parent != null)
-					_bitmap = new Bitmap((int)ActualWidth, (int)ActualHeight, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
-				else
-					_bitmap = null;
-			}
-		}
-
-		private void disposeBitmap()
-		{
-			lock (_bitmapLock)
-			{
-				_bitmap?.Dispose();
-			}
+			if (height > 0 && width > 0 && Parent != null)
+				_bitmap = new WriteableBitmap((int)ActualWidth, (int)ActualHeight, 96, 96, PixelFormats.Pbgra32, null);
+			else
+				_bitmap = null;
 		}
 	}
 }
