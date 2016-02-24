@@ -4,17 +4,56 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:local="clr-namespace:Imp.SkiaSharpWpfExtensions.Example"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:xctk="http://schemas.xceed.com/wpf/xaml/toolkit"
         Title="SkiaSharp WPF Extensions Example"
         Width="525"
         Height="350"
         mc:Ignorable="d">
-	<Grid>
+	<Window.Resources>
+		<local:SolidColorBrushToNullableColorConverter x:Key="SolidColorBrushToColorConverter" />
+	</Window.Resources>
 
-		<local:RandomRectsControl x:Name="RandomRectsControl"
-		                          Margin="10"
-		                          CanvasClear="Red" />
+	<Grid>
+		<Grid.RowDefinitions>
+			<RowDefinition Height="*" />
+			<RowDefinition Height="Auto" />
+		</Grid.RowDefinitions>
+		<Grid.ColumnDefinitions>
+			<ColumnDefinition Width="*" />
+			<ColumnDefinition Width="*" />
+			<ColumnDefinition Width="Auto" />
+			<ColumnDefinition Width="Auto" />
+		</Grid.ColumnDefinitions>
+
+		<local:GridZoomControl x:Name="GridZoomControl" Grid.ColumnSpan="4" />
+
+		<xctk:ColorPicker Grid.Row="1"
+		                  Grid.Column="0"
+		                  Margin="5"
+		                  SelectedColor="{Binding Foreground,
+		                                          ElementName=GridZoomControl,
+		                                          Converter={StaticResource SolidColorBrushToColorConverter}}" />
+
+		<xctk:ColorPicker Grid.Row="1"
+		                  Grid.Column="1"
+		                  Margin="5"
+		                  SelectedColor="{Binding CanvasClear,
+		                                          ElementName=GridZoomControl,
+		                                          Converter={StaticResource SolidColorBrushToColorConverter}}" />
+
+		<xctk:DoubleUpDown Grid.Row="1"
+		                   Grid.Column="2"
+		                   Width="50"
+		                   Margin="5"
+		                   Increment="0.5"
+		                   Maximum="20"
+		                   Minimum="0"
+		                   Value="{Binding StrokeWidth,
+		                                   ElementName=GridZoomControl}" />
 
 		<Button x:Name="SnapshotButton"
+		        Grid.Row="1"
+		        Grid.Column="3"
 		        Margin="5"
 		        HorizontalAlignment="Right"
 		        VerticalAlignment="Bottom"

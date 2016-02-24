@@ -1,5 +1,4 @@
-﻿using System;
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -16,15 +15,11 @@ namespace SkiaSharp.WpfExtensions
 		private WriteableBitmap _bitmap;
 		private SKColor _canvasClearColor;
 
-		static SkiaControl()
-		{
-			FocusableProperty.OverrideMetadata(typeof(SkiaControl), new FrameworkPropertyMetadata(true));
-		}
-
 		protected SkiaControl()
 		{
-			recreateBitmap();
-			SizeChanged += (o, args) => recreateBitmap();
+			cacheCanvasClearColor();
+			createBitmap();
+			SizeChanged += (o, args) => createBitmap();
 		}
 
 		
@@ -48,8 +43,7 @@ namespace SkiaSharp.WpfExtensions
 
 		private static void canvasClearPropertyChanged(DependencyObject o, DependencyPropertyChangedEventArgs args)
 		{
-			var control = (SkiaControl)o;
-			control._canvasClearColor = control.CanvasClear.ToSkia();
+			((SkiaControl)o).cacheCanvasClearColor();
 		}
 
 		/// <summary>
@@ -88,7 +82,7 @@ namespace SkiaSharp.WpfExtensions
 				if (IsClearCanvas)
 					surface.Canvas.Clear(_canvasClearColor);
 
-				Draw(surface.Canvas);
+				Draw(surface.Canvas, (int)_bitmap.Width, (int)_bitmap.Height);
 			}
 
 			_bitmap.AddDirtyRect(new Int32Rect(0, 0, (int)_bitmap.Width, (int)_bitmap.Height));
@@ -97,26 +91,28 @@ namespace SkiaSharp.WpfExtensions
 			dc.DrawImage(_bitmap, new Rect(0, 0, ActualWidth, ActualHeight));
 		}
 
-		protected override void OnVisualParentChanged(DependencyObject oldParent)
-		{
-			recreateBitmap();
-		}
-
 		/// <summary>
 		///     Override this method to implement the drawing routine for the control
 		/// </summary>
 		/// <param name="canvas">The Skia canvas</param>
-		protected abstract void Draw(SKCanvas canvas);
+		/// <param name="width">Canvas width</param>
+		/// <param name="height">Canvas height</param>
+		protected abstract void Draw(SKCanvas canvas, int width, int height);
 
-		private void recreateBitmap()
+		private void createBitmap()
 		{
 			int width = (int)ActualWidth;
 			int height = (int)ActualHeight;
 
 			if (height > 0 && width > 0 && Parent != null)
-				_bitmap = new WriteableBitmap((int)ActualWidth, (int)ActualHeight, 96, 96, PixelFormats.Pbgra32, null);
+				_bitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Pbgra32, null);
 			else
 				_bitmap = null;
+		}
+
+		private void cacheCanvasClearColor()
+		{
+			_canvasClearColor = CanvasClear.ToSkia();
 		}
 	}
 }

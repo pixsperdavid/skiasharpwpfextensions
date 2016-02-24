@@ -1,5 +1,9 @@
-﻿using System.IO;
+﻿using System;
+using System.Globalization;
+using System.IO;
 using System.Windows;
+using System.Windows.Data;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 
@@ -17,7 +21,7 @@ namespace Imp.SkiaSharpWpfExtensions.Example
 		{
 			e.Handled = true;
 
-			var imageSource = RandomRectsControl.SnapshotToBitmapSource();
+			var imageSource = GridZoomControl.SnapshotToBitmapSource();
 
 			if (imageSource == null)
 			{
@@ -39,6 +43,24 @@ namespace Imp.SkiaSharpWpfExtensions.Example
 					encoder.Save(fs);
 				}
 			}
+		}
+	}
+
+	[ValueConversion(typeof(SolidColorBrush), typeof(Color?))]
+	public class SolidColorBrushToNullableColorConverter : IValueConverter
+	{
+		public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+		{
+			var brush = value as SolidColorBrush;
+
+			return brush?.Color;
+		}
+
+		public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+		{
+			var color = value as Color?;
+
+			return color != null ? new SolidColorBrush(color.Value) : null;
 		}
 	}
 }
