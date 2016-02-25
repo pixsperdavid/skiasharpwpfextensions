@@ -1,6 +1,4 @@
 ﻿using System.ComponentModel;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -14,20 +12,17 @@ namespace SkiaSharp.WpfExtensions
 	[PublicAPI]
 	public abstract class SkiaControl : FrameworkElement
 	{
-		private Bitmap _bitmap;
+		private WriteableBitmap _bitmap;
 		private SKColor _canvasClearColor;
-
-		static SkiaControl()
-		{
-			FocusableProperty.OverrideMetadata(typeof(SkiaControl), new FrameworkPropertyMetadata(true));
-		}
 
 		protected SkiaControl()
 		{
-			recreateBitmap();
-			SizeChanged += (o, args) => recreateBitmap();
-			Dispatcher.ShutdownStarted += (o, args) => _bitmap?.Dispose();
+			cacheCanvasClearColor();
+			createBitmap();
+			SizeChanged += (o, args) => createBitmap();
 		}
+
+		
 
 
 
@@ -48,8 +43,7 @@ namespace SkiaSharp.WpfExtensions
 
 		private static void canvasClearPropertyChanged(DependencyObject o, DependencyPropertyChangedEventArgs args)
 		{
-			var control = (SkiaControl)o;
-			control._canvasClearColor = control.CanvasClear.ToSkia();
+			((SkiaControl)o).cacheCanvasClearColor();
 		}
 
 		/// <summary>
@@ -68,55 +62,57 @@ namespace SkiaSharp.WpfExtensions
 		public static readonly DependencyProperty IsClearCanvasProperty =
 			DependencyProperty.Register("IsClearCanvas", typeof(bool), typeof(SkiaControl), new PropertyMetadata(true));
 
-
+		/// <summary>
+		/// Capture the most recent control render to an image
+		/// </summary>
+		/// <returns>An <see cref="ImageSource"/> containing the captured area</returns>
+		[CanBeNull]
+		public BitmapSource SnapshotToBitmapSource() => _bitmap?.Clone();
 
 		protected override void OnRender(DrawingContext dc)
 		{
 			if (_bitmap == null)
 				return;
 
-			var data = _bitmap.LockBits(new Rectangle(0, 0, _bitmap.Width, _bitmap.Height), ImageLockMode.ReadWrite,
-				_bitmap.PixelFormat);
-			using (
-				var surface = SKSurface.Create(_bitmap.Width, _bitmap.Height, SKColorType.N_32, SKAlphaType.Premul, data.Scan0,
-					_bitmap.Width * 4))
+			_bitmap.Lock();
+
+			using (var surface = SKSurface.Create((int)_bitmap.Width, (int)_bitmap.Height, 
+				SKColorType.N_32, SKAlphaType.Premul, _bitmap.BackBuffer, _bitmap.BackBufferStride))
 			{
 				if (IsClearCanvas)
 					surface.Canvas.Clear(_canvasClearColor);
 
-				Draw(surface.Canvas);
+				Draw(surface.Canvas, (int)_bitmap.Width, (int)_bitmap.Height);
 			}
 
-			var bitmapSource = BitmapSource.Create(data.Width, data.Height, 96, 96, PixelFormats.Pbgra32, null,
-				data.Scan0, data.Stride * data.Height, data.Stride);
+			_bitmap.AddDirtyRect(new Int32Rect(0, 0, (int)_bitmap.Width, (int)_bitmap.Height));
+			_bitmap.Unlock();
 
-			_bitmap.UnlockBits(data);
-
-			dc.DrawImage(bitmapSource, new Rect(0, 0, ActualWidth, ActualHeight));
-		}
-
-		protected override void OnVisualParentChanged(DependencyObject oldParent)
-		{
-			recreateBitmap();
+			dc.DrawImage(_bitmap, new Rect(0, 0, ActualWidth, ActualHeight));
 		}
 
 		/// <summary>
 		///     Override this method to implement the drawing routine for the control
 		/// </summary>
 		/// <param name="canvas">The Skia canvas</param>
-		protected abstract void Draw(SKCanvas canvas);
+		/// <param name="width">Canvas width</param>
+		/// <param name="height">Canvas height</param>
+		protected abstract void Draw(SKCanvas canvas, int width, int height);
 
-		private void recreateBitmap()
+		private void createBitmap()
 		{
-			_bitmap?.Dispose();
-
 			int width = (int)ActualWidth;
 			int height = (int)ActualHeight;
 
 			if (height > 0 && width > 0 && Parent != null)
-				_bitmap = new Bitmap((int)ActualWidth, (int)ActualHeight, System.Drawing.Imaging.PixelFormat.Format32bppPArgb);
+				_bitmap = new WriteableBitmap(width, height, 96, 96, PixelFormats.Pbgra32, null);
 			else
 				_bitmap = null;
+		}
+
+		private void cacheCanvasClearColor()
+		{
+			_canvasClearColor = CanvasClear.ToSkia();
 		}
 	}
 }

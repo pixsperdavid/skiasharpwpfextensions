@@ -19,7 +19,7 @@ nuget:
 #       build configuration       #
 #---------------------------------#
 
-platform: Any CPU
+platform: x64
 
 configuration: Release
 
