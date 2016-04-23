@@ -15,14 +15,15 @@ namespace SkiaSharp.WpfExtensions
 		private WriteableBitmap _bitmap;
 		private SKColor _canvasClearColor;
 
+		/// <summary>
+		///     Constructor for abstract base
+		/// </summary>
 		protected SkiaControl()
 		{
 			cacheCanvasClearColor();
 			createBitmap();
 			SizeChanged += (o, args) => createBitmap();
 		}
-
-		
 
 
 
@@ -37,6 +38,9 @@ namespace SkiaSharp.WpfExtensions
 			set { SetValue(CanvasClearProperty, value); }
 		}
 
+		/// <summary>
+		///		Static dependency property for <see cref="CanvasClear"/>
+		/// </summary>
 		public static readonly DependencyProperty CanvasClearProperty =
 			DependencyProperty.Register("CanvasClear", typeof(SolidColorBrush), typeof(SkiaControl),
 				new PropertyMetadata(new SolidColorBrush(Colors.Transparent), canvasClearPropertyChanged));
@@ -59,24 +63,36 @@ namespace SkiaSharp.WpfExtensions
 			set { SetValue(IsClearCanvasProperty, value); }
 		}
 
+		/// <summary>
+		///		Static dependency property for <see cref="IsClearCanvas"/>
+		/// </summary>
 		public static readonly DependencyProperty IsClearCanvasProperty =
 			DependencyProperty.Register("IsClearCanvas", typeof(bool), typeof(SkiaControl), new PropertyMetadata(true));
 
 		/// <summary>
-		/// Capture the most recent control render to an image
+		///     Capture the most recent control render to an image
 		/// </summary>
-		/// <returns>An <see cref="ImageSource"/> containing the captured area</returns>
+		/// <returns>An <see cref="ImageSource" /> containing the captured area</returns>
 		[CanBeNull]
 		public BitmapSource SnapshotToBitmapSource() => _bitmap?.Clone();
 
-		protected override void OnRender(DrawingContext dc)
+		/// <summary>
+		///     When overridden in a derived class, participates in rendering operations that are directed by the layout
+		///     system. The rendering instructions for this element are not used directly when this method is invoked, and are
+		///     instead preserved for later asynchronous use by layout and drawing.
+		/// </summary>
+		/// <param name="drawingContext">
+		///     The drawing instructions for a specific element. This context is provided to the layout
+		///     system.
+		/// </param>
+		protected override void OnRender(DrawingContext drawingContext)
 		{
 			if (_bitmap == null)
 				return;
 
 			_bitmap.Lock();
 
-			using (var surface = SKSurface.Create((int)_bitmap.Width, (int)_bitmap.Height, 
+			using (var surface = SKSurface.Create((int)_bitmap.Width, (int)_bitmap.Height,
 				SKColorType.N_32, SKAlphaType.Premul, _bitmap.BackBuffer, _bitmap.BackBufferStride))
 			{
 				if (IsClearCanvas)
@@ -88,7 +104,7 @@ namespace SkiaSharp.WpfExtensions
 			_bitmap.AddDirtyRect(new Int32Rect(0, 0, (int)_bitmap.Width, (int)_bitmap.Height));
 			_bitmap.Unlock();
 
-			dc.DrawImage(_bitmap, new Rect(0, 0, ActualWidth, ActualHeight));
+			drawingContext.DrawImage(_bitmap, new Rect(0, 0, ActualWidth, ActualHeight));
 		}
 
 		/// <summary>
