@@ -4,9 +4,15 @@ using JetBrains.Annotations;
 
 namespace SkiaSharp.WpfExtensions
 {
+    /// <summary>
+    ///     Extension methods for Skia stroke types
+    /// </summary>
 	[PublicAPI]
 	public static class StrokeExtensions
 	{
+        /// <summary>
+        ///     Converts a <see cref="PenLineJoin"/> to it's equivalent <see cref="SKStrokeJoin"/>
+        /// </summary>
 		public static SKStrokeJoin ToSkia(this PenLineJoin penLinejoin)
 		{
 			switch (penLinejoin)
@@ -22,7 +28,10 @@ namespace SkiaSharp.WpfExtensions
 			}
 		}
 
-		public static SKStrokeCap ToSkia(this PenLineCap penLineCap)
+        /// <summary>
+        ///     Converts a <see cref="PenLineCap"/> to it's equivalent <see cref="SKStrokeCap"/>
+        /// </summary>
+        public static SKStrokeCap ToSkia(this PenLineCap penLineCap)
 		{
 			switch (penLineCap)
 			{

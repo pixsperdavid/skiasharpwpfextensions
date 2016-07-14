@@ -12,7 +12,7 @@ namespace SkiaSharp.WpfExtensions
 	[PublicAPI]
 	public abstract class SkiaControl : FrameworkElement
 	{
-		private WriteableBitmap _bitmap;
+	    [CanBeNull] private WriteableBitmap _bitmap;
 		private SKColor _canvasClearColor;
 
 		/// <summary>
@@ -113,7 +113,7 @@ namespace SkiaSharp.WpfExtensions
 		/// <param name="canvas">The Skia canvas</param>
 		/// <param name="width">Canvas width</param>
 		/// <param name="height">Canvas height</param>
-		protected abstract void Draw(SKCanvas canvas, int width, int height);
+		protected abstract void Draw([NotNull] SKCanvas canvas, int width, int height);
 
 		private void createBitmap()
 		{
